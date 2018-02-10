@@ -3,7 +3,9 @@ package main
 import (
     "bytes"
     "encoding/json"
+    "encoding/pem"
     "fmt"
+    "crypto/x509"
     "strings"
     "github.com/hyperledger/fabric/core/chaincode/shim"
     sc "github.com/hyperledger/fabric/protos/peer"
@@ -41,6 +43,8 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) sc.Response 
         return s.queryFileByPartialKey(APIstub, args)
     } else if function == "changeFileOwner" {
         return s.changeFileOwner(APIstub, args)
+    } else if function == "deleteFile" {
+        return s.deleteFile(APIstub, args)
     }
 
     return shim.Error("Invalid Smart Contract function name.")
@@ -52,17 +56,23 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) sc.Response 
  */
 func (s *SmartContract) createFile(APIstub shim.ChaincodeStubInterface, args []string) sc.Response {
 
-    if len(args) != 5 {
-        return shim.Error("Incorrect number of arguments. Expecting name, hash, keyword, summary, owner")
+    if len(args) != 4 {
+        return shim.Error("Incorrect number of arguments. Expecting name, hash, keyword, summary")
     }
+
+    uname, err := s.testCertificate(APIstub, nil)
+    if err != nil {
+        return shim.Error(err.Error())
+    }
+
     // create an object
-    var file = File{Name: args[0], Hash: args[1], Keyword: args[2], Summary: args[3], Owner: args[4]}
+    var file = File{Name: args[0], Hash: args[1], Keyword: args[2], Summary: args[3], Owner: uname}
     fileAsBytes, _ := json.Marshal(file)
 
     // we need a relational database as an addition to leveldb
     // edit here when custom interface is ready
-    // we currently use composite key with name, keyword and owner.
-    keys := []string{args[0], args[2], args[4]}
+    // we currently use composite key with keyword name and owner.
+    keys := []string{args[2], args[0], uname}
     ckey, err := APIstub.CreateCompositeKey("File", keys)
     if err != nil {
         return shim.Error(err.Error())
@@ -70,8 +80,8 @@ func (s *SmartContract) createFile(APIstub shim.ChaincodeStubInterface, args []s
     APIstub.PutState(ckey, fileAsBytes)
 
     // set an event
-    APIstub.SetEvent("createFile", fileAsBytes)
-    return shim.Success(nil)
+    APIstub.SetEvent("createFile", []byte(uname))
+    return shim.Success([]byte(uname))
 }
 
 
@@ -148,6 +158,61 @@ func (s *SmartContract) changeFileOwner(APIstub shim.ChaincodeStubInterface, arg
     APIstub.PutState(ckey, fileAsBytes)
 
     return shim.Success(nil)
+}
+
+
+/*
+ * deleteFile function: delete the whole file.  must provide complete composite key
+ */
+func (s *SmartContract) deleteFile(APIstub shim.ChaincodeStubInterface, args []string) sc.Response {
+    if len(args) != 3 {
+        return shim.Error("Incorrect number of arguments. Expecting 3 keys")
+    }
+
+    uname, err := s.testCertificate(APIstub, nil)
+    if err != nil {
+        return shim.Error(err.Error())
+    }
+    if uname != args[2] {
+        return shim.Error("permission denied")
+    }
+
+    // create composite key
+    keys := []string{args[0], args[1], args[2]}
+    ckey, err := APIstub.CreateCompositeKey("File", keys)
+    if err != nil {
+        return shim.Error(err.Error())
+    }
+    //query the File
+    err = APIstub.DelState(ckey)
+    if err != nil {
+        return shim.Error(err.Error())
+    }
+
+    APIstub.SetEvent("deleteFile", []byte(uname))
+    return shim.Success([]byte(uname))
+}
+
+
+func (s *SmartContract) testCertificate(stub shim.ChaincodeStubInterface, args []string ) (string, error) {
+    creatorByte, _ := stub.GetCreator()
+    certStart := bytes.IndexAny(creatorByte, "-----BEGIN")
+    if certStart == -1 {
+        return "", fmt.Errorf("%s", "no certificate detected")
+    }
+
+    certText := creatorByte[certStart:]
+    content, _ := pem.Decode(certText)
+    if content == nil {
+        return "", fmt.Errorf("%s", "fail to decode the certificate")
+    }
+
+    cert, err := x509.ParseCertificate(content.Bytes)
+    if err != nil {
+        return "", fmt.Errorf("%s", "fail when parsing the x509 certificate")
+    }
+    cname := cert.Subject.CommonName
+    return cname, nil
 }
 
 // for test

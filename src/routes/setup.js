@@ -5,13 +5,15 @@ var util = require('util');
 var os = require('os');
 
 var Network = {
-    config: {channel:"mychannel", grpc:'grpc://localhost:7051'},
+    config: {channel:"mychannel", order_addr:'grpc://localhost:7050', peer_addr:'grpc://localhost:7051', event_addr:'grpc://localhost:7053'},
     app_name: "myapp",
     fabric_client: null,
     channel: null,
     peer: null,
     store_path: path.join(__dirname, "../../hfc-key-store"),
     user: null,
+    order: null,
+    event_hub: null,
 
     // init network
     init: function() {
@@ -19,9 +21,12 @@ var Network = {
         // init basic network config
         this.fabric_client = new Fabric_Client();
         this.channel = this.fabric_client.newChannel(this.config.channel);
-        this.peer = this.fabric_client.newPeer(this.config.grpc);
+        this.peer = this.fabric_client.newPeer(this.config.peer_addr);
+        this.order = this.fabric_client.newOrderer(this.config.order_addr);
+        this.event_hub = this.fabric_client.newEventHub();
+        this.event_hub.setPeerAddr(this.config.event_addr);
         this.channel.addPeer(this.peer);
-        var uname = "user1";
+        this.channel.addOrderer(this.order);
         console.log("store path: ", this.store_path);
 
         // create the key value store as default config

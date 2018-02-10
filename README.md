@@ -43,7 +43,7 @@ npm run dev
 ```
 ## Usage
 ### login
-POST http://<hostname>:3000/users/login  
+POST http://hostname:3000/users/login  
 params: username  
 e.g.
 ```
@@ -55,9 +55,9 @@ Expected result:
 }
 ```
 ### logout
-POST http://<hostname>:3000/users/logout
+POST http://hostname:3000/users/logout
 ### create a file
-POST http://<hostname>:3000/file  
+POST http://hostname:3000/file  
 params: name, hash, keyword, summary  
 e.g.  
 ```
@@ -68,7 +68,7 @@ Expected result:
 File object has another field: owner  
 owner = creator of the transaction  
 ### delete a file
-DELETE http://<hostname>:3000/file  
+DELETE http://hostname:3000/file  
 params: keyword, name, owner  
 chaincode 将检查 transaction creator's cretificate. 如果creator和file.owner不符合，操作将失败。
 e.g.  
@@ -78,7 +78,7 @@ Expexted result:
 {"success":true,"tx_id":"3d72f82dcadfd71082caf2d268dccc80d95addd58e72b342ae71dd359d179468"}
 ```
 ### Query files
-GET http://<hostname>:3000/file  
+GET http://hostname:3000/file  
 params: keyword, name, owner  
 可以只提供keyword，则查找符合该keyword的file。  
 同理可以提供前两个参数，或者提供全部三个参数将精确查找一个文件  

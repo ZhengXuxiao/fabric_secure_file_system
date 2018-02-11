@@ -23,11 +23,11 @@ rm -rf ./hfc-key-store
 docker network prune
 
 
-cd ../basic-network
+cd ./basic-network
 # setup channels and containers
 ./start.sh
 docker-compose -f ./docker-compose.yml up -d cli
 
 
-docker exec -e "CORE_PEER_LOCALMSPID=Org1MSP" -e "CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp" cli mkdir $BASE_PATH/myapp
+# docker exec -e "CORE_PEER_LOCALMSPID=Org1MSP" -e "CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp" cli mkdir $BASE_PATH/myapp
 

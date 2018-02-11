@@ -6,7 +6,8 @@ var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 var session = require('express-session');
 
-var network = require('./routes/setup')
+var network = require('./routes/setup');
+var event_listener = require('./routes/event');
 
 var index = require('./routes/index');
 var users = require('./routes/users');
@@ -17,8 +18,6 @@ var app = express();
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'hbs');
-
-network.init();
 
 // uncomment after placing your favicon in /public
 //app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
@@ -36,6 +35,17 @@ app.use(session({
         maxAge: 10000*60*30
     }
 }));
+
+network.init();
+
+app.use(function(req, res, next) {
+    if (! network.user && req.originalUrl.slice(0,12) != '/users/login') {
+        return res.send({success:false, message:"please login in first"});
+    } else {
+        next();
+    }
+});
+
 
 app.use('/', index);
 app.use('/file', file);

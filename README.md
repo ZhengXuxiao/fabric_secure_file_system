@@ -73,7 +73,7 @@ params: keyword, name, owner
 chaincode 将检查 transaction creator's cretificate. 如果creator和file.owner不符合，操作将失败。
 e.g.  
 ```
-POST http://127.0.0.1:3000/file?keyword=key1&name=name1&owner=user1
+DELETE http://127.0.0.1:3000/file?keyword=key1&name=name1&owner=user1
 Expexted result:
 {"success":true,"tx_id":"3d72f82dcadfd71082caf2d268dccc80d95addd58e72b342ae71dd359d179468"}
 ```
@@ -90,6 +90,29 @@ Expected result:
 {"success":true,"message":"[{\"Key\":{\"objectType\":File\", \"attributes\":[\"key1\", \"name1\",\"user1\"]},\"Record\":{\"hash\":\"hash1\",\"keyword\":\"key1\",\"name\":\"name1\",\"owner\":\"user1\",\"summary\":\"sum1\"}},
 {\"Key\":{\"objectType\":File\",\"attributes\":[\"key1\", \"name2\", \"user1\"]},\"Record\":{\"hash\":\"hash2\",\"keyword\":\"key1\",\"name\":\"name2\",\"owner\":\"user1\",\"summary\":\"sum2\"}}]"}
 ```
+### Event Listener
+in ./src/routes/event.js  
+```js
+    var promise = new Promise( (resolve, reject) => {
+        event_hub.registerChaincodeEvent(network.app_name, 'createFile', function(ev) {
+            console.log("catch createFile event", ev);
+            // do something
+        },
+        function() {
+            console.log("event listener stopped");
+        }); 
+
+        event_hub.registerChaincodeEvent(network.app_name, 'deleteFile', function(ev) {
+            console.log("catch deleteFile event", ev);
+            // do something
+        },
+        function() {
+            console.log("event listener stopped");
+        });
+    });
+```
+其中createFile和deleteFile是两个自定义的chaincode event，分别在createFile和deleteFile交易提交后广播。在此处可以添加控制代码相应状态的变化。--
+另外，在API返回时，transaction也已经确认提交到ledger。效果类似，但自定义event的灵活性可以选择使用。--
 ### Other considerations
 如果使用的fabric网络不同，请修改./src/routes/setup.js
 ```js

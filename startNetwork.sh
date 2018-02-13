@@ -12,7 +12,6 @@ export MSYS_NO_PATHCONV=1
 starttime=$(date +%s)
 LANGUAGE="golang"
 BASE_PATH=/opt/gopath/src/github.com
-CC_SRC_PATH=github.com/myapp
 
 # clean the keystore
 rm -rf ./hfc-key-store

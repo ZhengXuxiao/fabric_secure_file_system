@@ -80,6 +80,7 @@ Expexted result:
 ### Query files
 GET http://hostname:3000/file  
 params: keyword, name, owner  
+可以三个参数为空，查询全部files  
 可以只提供keyword，则查找符合该keyword的file。  
 同理可以提供前两个参数，或者提供全部三个参数将精确查找一个文件  
 leveldb限制下暂时如此处理  
@@ -93,26 +94,58 @@ Expected result:
 ### Event Listener
 in ./src/routes/event.js  
 ```js
-    var promise = new Promise( (resolve, reject) => {
-        event_hub.registerChaincodeEvent(network.app_name, 'createFile', function(ev) {
-            console.log("catch createFile event", ev);
-            // do something
-        },
-        function() {
-            console.log("event listener stopped");
-        }); 
+var promise = new Promise( (resolve, reject) => {
+    event_hub.registerChaincodeEvent(network.app_name[1], 'requestSecret', function(ev) {
+        console.log("catch requestSecret event", ev.payload.toString());
+        // do something
+    },
+    function() {
+        console.log("event listener stopped");
+    }); 
 
-        event_hub.registerChaincodeEvent(network.app_name, 'deleteFile', function(ev) {
-            console.log("catch deleteFile event", ev);
-            // do something
-        },
-        function() {
-            console.log("event listener stopped");
-        });
-    });
+    event_hub.registerChaincodeEvent(network.app_name[1], 'respondSecret', function(ev) {
+        console.log("catch respondSecret event", ev.payload.toString());
+        // do something
+    },
 ```
-其中createFile和deleteFile是两个自定义的chaincode event，分别在createFile和deleteFile交易提交后广播。在此处可以添加控制代码相应状态的变化。--
-另外，在API返回时，transaction也已经确认提交到ledger。效果类似，但自定义event的灵活性可以选择使用。--
+其中requestSecret和respondSecret是两个自定义的chaincode event，分别在提交文件请求和回复文件秘密值，交易提交后广播（见./chaincode/keyExchange/keyExchange.go）。在此处可以添加控制代码响应状态的变化。  
+另外，在API返回时，transaction也已经确认提交到ledger。效果类似，但自定义event的灵活性可以选择使用。  
+
+### Request a file
+POST http://hostname:3000/exchange  
+params: keyword, name, owner  
+e.g.  
+```
+login as user2
+POST http://127.0.0.1:3000/exchange?keyword=key1&name=name1&owner=user1
+Expected result:
+{"success":true,"tx_id":"57e0fa4935f8feac17678d2f2675dd1ce32ed3b7ef7f040755fd44519a58672d"}
+Caught event:
+{"from":"user2","To":"user1","file":"\u0000File\u0000key1\u0000name1\u0000user1\u0000","tx_id":"57e0fa4935f8feac17678d2f2675dd1ce32ed3b7ef7f040755fd44519a58672d"}
+```
+
+### Respond a request
+GET http://hostname:3000/exchange  
+params: tx_id (of the request transaction), secret (key to decrypt file)  
+e.g.  
+```
+http://127.0.0.1:3000/exchange?tx_id=57e0fa4935f8feac17678d2f2675dd1ce32ed3b7ef7f040755fd44519a58672d&secret=secret1
+Expected result:
+{"success":true,"tx_id":"90fd66c11cf11e4a6a6f12d5c300f6525ab3d08c2f115ac59f64401d9b77e6bf"}
+Caught event:
+{"from":"user1","To":"user2","file":"\u0000File\u0000key1\u0000name1\u0000user1\u0000","tx_id":"57e0fa4935f8feac17678d2f2675dd1ce32ed3b7ef7f040755fd44519a58672d","secret":"secret1"}
+```
+
+### Confirm secret received
+DELETE http://hostname:3000/exchange  
+params: tx_id (of the request transaction)  
+e.g.  
+```
+DELETE http://127.0.0.1:3000/exchange?tx_id=57e0fa4935f8feac17678d2f2675dd1ce32ed3b7ef7f040755fd44519a58672d
+Expected result:
+{"success":true,"tx_id":"89e6ae05fd2552f782cb2ef57428ff0449587ff72f2b076480cf0c9f9f905391"}
+```
+
 ### Other considerations
 如果使用的fabric网络不同，请修改./src/routes/setup.js
 ```js
@@ -129,7 +162,4 @@ var Network = {
 ...
 ```
 ## TODO list
-* query all files function. will come soon.
-* chaincode event listener
-* key exchange and privacy protection
 * relational database implemented in chaincode

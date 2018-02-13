@@ -5,47 +5,28 @@ var chaincode = require('./chaincode.js');
 
 /* GET & POST invoke createFile and queryFileByPartialKey function in chaincode  */
 router.route('/').get(function(req, res, next) {
-    // GET /file
-    // invoke queryFileByPartialKey
-    // params: keyword, name, owner
+    // GET /exchange
+    // invoke respondSecret
+    // params: tx_id, secret
 
     var _query = [];
-    if (req.query.keyword.length > 0) _query.push(req.query.keyword);
-    if (req.query.name.length > 0) _query.push(req.query.name);
-    if (req.query.owner.length > 0) _query.push(req.query.owner);
-
-    const request = {
-        chaincodeId: network.app_name[0],
-        fcn: 'queryFile',
-        args: _query
-    };
-    return chaincode.query(req, res, next, request);
-
-}).post(function(req, res, next) {
-    // POST /file
-    // invoke createFile
-    // params: name, hash, keyword, summary
-
-    var _query = [];
-    _query.push(req.query.name);
-    _query.push(req.query.hash);
-    _query.push(req.query.keyword);
-    _query.push(req.query.summary);
+    _query.push(req.query.tx_id);
+    _query.push(req.query.secret);
 
     var _txId = network.fabric_client.newTransactionID();
 
     const request = {
-        chaincodeId: network.app_name[0],
-        fcn: 'createFile',
+        chaincodeId: network.app_name[1],
+        fcn: 'respondSecret',
         args: _query,
-        chainId: network.config.channel,
+        chainId: network.config.channal,
         txId: _txId
     };
     return chaincode.invoke(req, res, next, request);
 
-}).delete(function(req, res, next) {
-    // DELETE /file
-    // invoke deleteFile
+}).post(function(req, res, next) {
+    // POST /exchange
+    // invoke requestSecret
     // params: keyword, name, owner
 
     var _query = [];
@@ -56,8 +37,27 @@ router.route('/').get(function(req, res, next) {
     var _txId = network.fabric_client.newTransactionID();
 
     const request = {
-        chaincodeId: network.app_name[0],
-        fcn: 'deleteFile',
+        chaincodeId: network.app_name[1],
+        fcn: 'requestSecret',
+        args: _query,
+        chainId: network.config.channel,
+        txId: _txId
+    };
+    return chaincode.invoke(req, res, next, request);
+
+}).delete(function(req, res, next) {
+    // DELETE /exchange
+    // invoke confirmSecret
+    // params: tx_id
+
+    var _query = [];
+    _query.push(req.query.tx_id);
+
+    var _txId = network.fabric_client.newTransactionID();
+
+    const request = {
+        chaincodeId: network.app_name[1],
+        fcn: 'confirmSecret',
         args: _query,
         chainId: network.config.channel,
         txId: _txId

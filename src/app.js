@@ -12,6 +12,7 @@ var event_listener = require('./routes/event');
 var index = require('./routes/index');
 var users = require('./routes/users');
 var file = require('./routes/file');
+var exchange = require('./routes/exchange');
 
 var app = express();
 
@@ -50,6 +51,7 @@ app.use(function(req, res, next) {
 app.use('/', index);
 app.use('/file', file);
 app.use('/users', users);
+app.use('/exchange', exchange);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

@@ -6,7 +6,7 @@ var os = require('os');
 
 var Network = {
     config: {channel:"mychannel", order_addr:'grpc://localhost:7050', peer_addr:'grpc://localhost:7051', event_addr:'grpc://localhost:7053'},
-    app_name: "myapp",
+    app_name: ["myapp", "keyExchange"],
     fabric_client: null,
     channel: null,
     peer: null,

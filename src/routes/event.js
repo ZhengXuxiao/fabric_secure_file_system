@@ -19,16 +19,16 @@ Fabric_Client.newDefaultKeyValueStore({ path: network.store_path }).then((state_
 }).then((user_from_store) => {
     event_hub.connect();
     var promise = new Promise( (resolve, reject) => {
-        event_hub.registerChaincodeEvent(network.app_name, 'createFile', function(ev) {
-            console.log("catch createFile event", ev);
+        event_hub.registerChaincodeEvent(network.app_name[1], 'requestSecret', function(ev) {
+            console.log("catch requestSecret event", ev.payload.toString());
             // do something
         },
         function() {
             console.log("event listener stopped");
         }); 
 
-        event_hub.registerChaincodeEvent(network.app_name, 'deleteFile', function(ev) {
-            console.log("catch deleteFile event", ev);
+        event_hub.registerChaincodeEvent(network.app_name[1], 'respondSecret', function(ev) {
+            console.log("catch respondSecret event", ev.payload.toString());
             // do something
         },
         function() {

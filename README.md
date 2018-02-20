@@ -1,9 +1,9 @@
 # RESTful API for fabric sample chaincode
 ## Introduction
-本项目使用hyperledger fabric 1.0.5
-搭建fabric基本网络（单节点），使用golang编写示例chaincode，使用nodejs SDK以及express搭建RESTful API.  
-参考了/fabric-samples/basic-network && /fabric-samples/fabcar   
-测试基于fabric 1.0.5 以及basic-network
+This repo use Hyperledger Fabric 1.0.5 to configure the blockchain network.  
+Set up a single node test network.  Code the chaincode in golang. Use nodejs SDK to implement APIs
+and event listeners.  
+My references: /fabric-samples/basic-network  &&  /fabric-samples/fabcar  
 ## Dependency
 * npm & node
 * docker & docker-compose
@@ -15,7 +15,7 @@
 ```shell
 ./clear.sh
 ```
-warning: 该操作会删除所有docker container。或者可以手动删除fabric container以及旧的chaincode image.
+warning: This script will remove all docker containers and chaincode images. Be careful or do the clear-up job by yourself.
 * Setup fabric network
 ```shell
 ./startNetwork.sh
@@ -24,7 +24,7 @@ warning: 该操作会删除所有docker container。或者可以手动删除fabr
 ```shell
 ./startChaincode.sh
 ```
-chaincode存放在./chaincode中，使用golang编写。
+chaincode files are in directory ./chaincode
 * Install nodejs packages
 ```shell
 npm install
@@ -70,7 +70,7 @@ owner = creator of the transaction
 ### delete a file
 DELETE http://hostname:3000/file  
 params: keyword, name, owner  
-chaincode 将检查 transaction creator's cretificate. 如果creator和file.owner不符合，操作将失败。
+chaincode will check transaction creator's cretificate. If the creator of the transaction differ file.owner, the transaction will fail
 e.g.  
 ```
 DELETE http://127.0.0.1:3000/file?keyword=key1&name=name1&owner=user1
@@ -80,10 +80,10 @@ Expexted result:
 ### Query files
 GET http://hostname:3000/file  
 params: keyword, name, owner  
-可以三个参数为空，查询全部files  
-可以只提供keyword，则查找符合该keyword的file。  
-同理可以提供前两个参数，或者提供全部三个参数将精确查找一个文件  
-leveldb限制下暂时如此处理  
+if three params are all empty, it will query all files  
+if only keyword is provided, it will query all files with this keyword  
+In the same way, if all three params are provided, it will query the exact target file  
+key-value database leveldb does not support conplicated retrivals.  
 e.g.  
 ```
 GET http://127.0.0.1:3000/file?keyword=key1&name=&owner=
@@ -108,8 +108,8 @@ var promise = new Promise( (resolve, reject) => {
         // do something
     },
 ```
-其中requestSecret和respondSecret是两个自定义的chaincode event，分别在提交文件请求和回复文件秘密值，交易提交后广播（见./chaincode/keyExchange/keyExchange.go）。在此处可以添加控制代码响应状态的变化。  
-另外，在API返回时，transaction也已经确认提交到ledger。效果类似，但自定义event的灵活性可以选择使用。  
+requestSecret and respondSecret are two custom EVENT object. When the user successfully invoke requestSecret and respondSecret function, these two EVENT will be recorded on ledger.  
+And the client can listen to these events and do something to respond.
 
 ### Request a file
 POST http://hostname:3000/exchange  
@@ -147,7 +147,7 @@ Expected result:
 ```
 
 ### Other considerations
-如果使用的fabric网络不同，请修改./src/routes/setup.js
+For other Fabric networks, please edit the config in ./src/routes/setup.js
 ```js
 var Network = {
     config: {channel:"mychannel", order_addr:'grpc://localhost:7050', peer_addr:'grpc://localhost:7051', event_addr:'grpc://localhost:7053'},

@@ -90,6 +90,16 @@ func (s *SmartContract) requestSecret(APIstub shim.ChaincodeStubInterface, args 
         return shim.Error(err.Error())
     }
 
+    // check the existence of the file
+    argsByBytes := [][]byte{[]byte("queryFile"), []byte(args[0]), []byte(args[1]), []byte(args[2])}
+    res := APIstub.InvokeChaincode("myapp", argsByBytes, "")
+    if res.Status > 400 {
+        return shim.Error("Fail to call file chaincode")
+    }
+    if len(res.Payload) <= 2 {
+        return shim.Error("The file is not exist")
+    }
+
     // get timestamp and tx_id
     tx_id := APIstub.GetTxID()
     timestamp, err := APIstub.GetTxTimestamp()

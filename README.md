@@ -107,16 +107,16 @@ type Request struct {
 * step 1 Request  
 User1 request File1 and provide File1.key  
 Create RequestTime timestamp  
-* step 2 Respond
+* step 2 Respond  
 User2 is the owner of File1. After he receives the request proposal(using events), he should upload Secret and create a Respond event.  
 ResponseTime timestamp is created.
 A locktime is created as an attribute of File1. Assume File1.locktime = t and T is a constant time period  
 When t &lt; current time &lt; t + 2T, other Request cannot be accepted.
-* step 3 Confirm
+* step 3 Confirm  
 when current time &lt; t + T, File1 cannot be edited or deleted and it is for User1 to confirm the secret.  
 User1 can invoke Confirm function and create ConfirmationTime timestamp.  
 If time is out, User1 abandon terminate the protocol.  
-* step 4 Preparation for next request.
+* step 4 Preparation for next request.  
 When t + T &lt; current time &lt; t + 2T, User2(the owner) can freely edit the File1.  
 For example, User2 can change the secret password of File1 when he realized the leak of secret.  
 
@@ -176,7 +176,7 @@ Expected result:
 {"success":true,"tx_id":"89e6ae05fd2552f782cb2ef57428ff0449587ff72f2b076480cf0c9f9f905391"}
 ```
 
-### query one Request
+### Query one Request
 GET http://hostname:3000/exchange  
 params: tx_id (of the request transaction)  
 e.g.  

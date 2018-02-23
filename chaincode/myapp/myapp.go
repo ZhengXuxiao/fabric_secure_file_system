@@ -21,6 +21,7 @@ type File struct {
     Keyword string `json:"keyword"`
     Summary string `json:"summary"`
     Owner string `json:"owner"`
+    Locktime int64 `json:"locktime"`
 }
 
 /*
@@ -39,12 +40,16 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) sc.Response 
     function, args := APIstub.GetFunctionAndParameters()
     if function == "createFile" {
         return s.createFile(APIstub, args)
-    } else if function == "queryFileByPartialKey" {
-        return s.queryFileByPartialKey(APIstub, args)
+    } else if function == "queryFile" {
+        return s.queryFile(APIstub, args)
     } else if function == "changeFileOwner" {
         return s.changeFileOwner(APIstub, args)
     } else if function == "deleteFile" {
         return s.deleteFile(APIstub, args)
+    } else if function == "externalTestLocktime" {
+        return s.externalTestLocktime(APIstub, args)
+    } else if function == "addLocktime" {
+        return s.addLocktime(APIstub, args)
     }
 
     return shim.Error("Invalid Smart Contract function name.")
@@ -66,7 +71,7 @@ func (s *SmartContract) createFile(APIstub shim.ChaincodeStubInterface, args []s
     }
 
     // create an object
-    var file = File{Name: args[0], Hash: args[1], Keyword: args[2], Summary: args[3], Owner: uname}
+    var file = File{Name: args[0], Hash: args[1], Keyword: args[2], Summary: args[3], Owner: uname, Locktime: 0}
     fileAsBytes, _ := json.Marshal(file)
 
     // we need a relational database as an addition to leveldb
@@ -79,26 +84,26 @@ func (s *SmartContract) createFile(APIstub shim.ChaincodeStubInterface, args []s
     }
     APIstub.PutState(ckey, fileAsBytes)
 
-    // set an event
-    APIstub.SetEvent("createFile", []byte(uname))
     return shim.Success([]byte(uname))
 }
 
 
 /*
- *queryFileByPartialKey function: query File by at least one at most three keys
+ *queryFile function: query File by at least one at most three keys
  */
-func (s *SmartContract) queryFileByPartialKey(APIstub shim.ChaincodeStubInterface, args []string) sc.Response {
+func (s *SmartContract) queryFile(APIstub shim.ChaincodeStubInterface, args []string) sc.Response {
 
-    if len(args) < 1 {
+    if len(args) > 3 {
         return shim.Error("Incorrect number of arguments. Expacting at least one key from name, keyword and owner to search file system")
     }
 
     // get query result
     resultsIterator, err := APIstub.GetStateByPartialCompositeKey("File", args)
+
     if err != nil {
         return shim.Error(err.Error())
     }
+
     defer resultsIterator.Close()
 
     // buffer is a JSON array containing query results
@@ -106,6 +111,7 @@ func (s *SmartContract) queryFileByPartialKey(APIstub shim.ChaincodeStubInterfac
     buffer.WriteString("[")
 
     bArrayMemberAlreadyWritten := false
+
     for resultsIterator.HasNext() {
         queryResponse, err := resultsIterator.Next()
         if err != nil {
@@ -129,7 +135,6 @@ func (s *SmartContract) queryFileByPartialKey(APIstub shim.ChaincodeStubInterfac
     }
     buffer.WriteString("]")
 
-    fmt.Printf("- queryFileByPartialKey:\n%s\n", buffer.String())
     return shim.Success(buffer.Bytes())
 }
 
@@ -142,6 +147,17 @@ func (s *SmartContract) changeFileOwner(APIstub shim.ChaincodeStubInterface, arg
         return shim.Error("Incorrect number of arguments. Expecting 3 keys and 1 new owner")
     }
 
+    uname, err := s.testCertificate(APIstub, nil)
+    if err != nil {
+        return shim.Error(err.Error())
+    }
+
+    // test Locktime
+    timeflag := s.testLocktime(APIstub, []string{args[0], args[1], args[2]})
+    if timeflag >= 2 {
+        return shim.Error("The file is locked")
+    }
+
     // create composite key
     keys := []string{args[0], args[1], args[2]}
     ckey, err := APIstub.CreateCompositeKey("File", keys)
@@ -152,6 +168,11 @@ func (s *SmartContract) changeFileOwner(APIstub shim.ChaincodeStubInterface, arg
     fileAsBytes, _ := APIstub.GetState(ckey)
     file := File{}
     json.Unmarshal(fileAsBytes, &file)
+
+    if file.Owner != uname {
+        return shim.Error("Permission denied")
+    }
+
     // edit Owner attribute
     file.Owner = args[3]
     fileAsBytes, _ = json.Marshal(file)
@@ -167,6 +188,12 @@ func (s *SmartContract) changeFileOwner(APIstub shim.ChaincodeStubInterface, arg
 func (s *SmartContract) deleteFile(APIstub shim.ChaincodeStubInterface, args []string) sc.Response {
     if len(args) != 3 {
         return shim.Error("Incorrect number of arguments. Expecting 3 keys")
+    }
+
+    // test Locktime
+    timeflag := s.testLocktime(APIstub, []string{args[0], args[1], args[2]})
+    if timeflag >= 2 {
+        return shim.Error("The file is locked")
     }
 
     uname, err := s.testCertificate(APIstub, nil)
@@ -189,8 +216,122 @@ func (s *SmartContract) deleteFile(APIstub shim.ChaincodeStubInterface, args []s
         return shim.Error(err.Error())
     }
 
-    APIstub.SetEvent("deleteFile", []byte(uname))
     return shim.Success([]byte(uname))
+}
+
+
+/*
+ * addLocktime function: called by exchange chaincode when the file owner respond file request
+ */
+func (s *SmartContract) addLocktime(APIstub shim.ChaincodeStubInterface, args []string) sc.Response {
+
+    if len(args) != 1 {
+        return shim.Error("Incorrect number of arguments. Expecting file key")
+    }
+
+    // check certificate
+    uname, err := s.testCertificate(APIstub, nil)
+    if err != nil {
+        return shim.Error(err.Error())
+    }
+
+    // test Locktime
+    timeflag := s.testLocktime(APIstub, []string{args[0]})
+    if timeflag != 0 {
+        return shim.Error("The file is locked")
+    }
+
+    // get Tx Timestamp
+    timestamp, err := APIstub.GetTxTimestamp()
+    if err != nil {
+        return shim.Error(err.Error())
+    }
+
+    //query the File
+    fileAsBytes, _ := APIstub.GetState(args[0])
+    file := File{}
+    json.Unmarshal(fileAsBytes, &file)
+
+    if file.Owner != uname {
+        return shim.Error("Permission denied")
+    }
+    // edit Locktime attribute
+    file.Locktime = timestamp.GetSeconds()
+    fileAsBytes, _ = json.Marshal(file)
+    APIstub.PutState(args[0], fileAsBytes)
+
+    return shim.Success(nil)
+
+}
+
+
+func (s *SmartContract) testLocktime(APIstub shim.ChaincodeStubInterface, args []string) (int) {
+
+    if len(args) != 1 {
+        return 3
+    }
+
+    //query the File
+    fileAsBytes, _ := APIstub.GetState(args[0])
+    file := File{}
+    json.Unmarshal(fileAsBytes, &file)
+
+    timestamp, err := APIstub.GetTxTimestamp()
+    if err != nil {
+        return 4
+    }
+
+    intTimestamp := timestamp.GetSeconds()
+    fileTimestamp := file.Locktime
+
+    // 2 - waiting for file requester to confirm
+    // 1 - Comfirm time out. Free for file owner to edit the file
+    // 0 - normal time
+    // both 1 & 2 the file cannot be requested again
+    if intTimestamp <= fileTimestamp + 300 {
+        return 2
+    } else if intTimestamp <= fileTimestamp + 600 {
+        return 1
+    } else {
+        return 0
+    }
+}
+
+
+/*
+ * externalTestLocktime function: Different from testLocktime, this function is called by exchange
+ * chaincode
+ */
+func (s *SmartContract) externalTestLocktime(APIstub shim.ChaincodeStubInterface, args []string) sc.Response {
+
+    if len(args) != 1 {
+        return shim.Error("Incorrect number of arguments. Expecting file key")
+    }
+
+    //query the File
+    fileAsBytes, _ := APIstub.GetState(args[0])
+    file := File{}
+    json.Unmarshal(fileAsBytes, &file)
+
+    timestamp, err := APIstub.GetTxTimestamp()
+    if err != nil {
+        return shim.Error(err.Error())
+    }
+
+    intTimestamp := timestamp.GetSeconds()
+    fileTimestamp := file.Locktime
+
+    // 2 - waiting for file requester to confirm
+    // 1 - Comfirm time out. Free for file owner to edit the file
+    // 0 - normal time
+    // both 1 & 2 the file cannot be requested again
+    if intTimestamp <= fileTimestamp + 300 {
+        return shim.Success([]byte("2"))
+    } else if intTimestamp <= fileTimestamp + 600 {
+        return shim.Success([]byte("1"))
+    } else {
+        return shim.Success([]byte("0"))
+    }
 }
 
 

@@ -18,9 +18,9 @@ type Request struct {
     From string `json:"from"`
     To string `json:"To"`
     File string `json:"file"`
-    RequestTime string `json:"requestTime"`
-    ResponseTime string `json:"responseTime"`
-    ConfirmationTime string `json:"confirmationTime"`
+    RequestTime int64 `json:"requestTime"`
+    ResponseTime int64 `json:"responseTime"`
+    ConfirmationTime int64 `json:"confirmationTime"`
 }
 
 type RequestMessage struct {
@@ -66,6 +66,8 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) sc.Response 
         return s.respondSecret(APIstub, args)
     } else if function == "confirmSecret" {
         return s.confirmSecret(APIstub, args)
+    } else if function == "queryRequest" {
+        return s.queryRequest(APIstub, args)
     }
 
     return shim.Error("Invalid Smart Contract function name.")
@@ -82,7 +84,6 @@ func (s *SmartContract) requestSecret(APIstub shim.ChaincodeStubInterface, args 
     if err != nil {
         return shim.Error(err.Error())
     }
-
     // produce the composite key for file
     keys := []string{args[0], args[1], args[2]}
     ckey, err := APIstub.CreateCompositeKey("File", keys)
@@ -90,9 +91,24 @@ func (s *SmartContract) requestSecret(APIstub shim.ChaincodeStubInterface, args 
         return shim.Error(err.Error())
     }
 
-    // check the existence of the file
-    argsByBytes := [][]byte{[]byte("queryFile"), []byte(args[0]), []byte(args[1]), []byte(args[2])}
+
+    argsByBytes := [][]byte{[]byte("externalTestLocktime"), []byte(ckey)}
     res := APIstub.InvokeChaincode("myapp", argsByBytes, "")
+    if res.Status > 400 {
+        return shim.Error(res.Message)
+    }
+    if len(res.Payload) <= 0 {
+        return shim.Error("The file is not exist")
+    } else {
+        ret := string(res.Payload)
+        if ret != "0" {
+            return shim.Error("The file is locked for request")
+        }
+    }
+
+    // check the existence of the file
+    argsByBytes = [][]byte{[]byte("queryFile"), []byte(args[0]), []byte(args[1]), []byte(args[2])}
+    res = APIstub.InvokeChaincode("myapp", argsByBytes, "")
     if res.Status > 400 {
         return shim.Error("Fail to call file chaincode")
     }
@@ -108,8 +124,9 @@ func (s *SmartContract) requestSecret(APIstub shim.ChaincodeStubInterface, args 
     }
 
     // put request record
-    var request = Request{From: uname, To: args[2], File: ckey, RequestTime: timestamp.String(), ResponseTime: "", ConfirmationTime: ""}
+    var request = Request{From: uname, To: args[2], File: ckey, RequestTime: timestamp.GetSeconds(), ResponseTime: 0, ConfirmationTime: 0}
     requestAsBytes, _ := json.Marshal(request)
+
     APIstub.PutState(tx_id, requestAsBytes)
 
     // broadcast an event
@@ -146,13 +163,19 @@ func (s *SmartContract) respondSecret(APIstub shim.ChaincodeStubInterface, args 
     if err != nil {
         return shim.Error(err.Error())
     }
-    if request.ResponseTime == "" {
-        request.ResponseTime = timestamp.String()
+    if request.ResponseTime == 0 {
+        request.ResponseTime = timestamp.GetSeconds()
     } else {
         return shim.Error("This request already has a response")
     }
     requestAsBytes, _ = json.Marshal(request)
     APIstub.PutState(args[0], requestAsBytes)
+
+    argsByBytes := [][]byte{[]byte("addLocktime"), []byte(request.File)}
+    res := APIstub.InvokeChaincode("myapp", argsByBytes, "")
+    if res.Status > 400 {
+        return shim.Error(res.Message)
+    }
 
     // broadcast an event
     var message = ResponseMessage{From: uname, To: request.From, File: request.File, TxID: args[0], Secret: args[1]}
@@ -183,13 +206,28 @@ func (s *SmartContract) confirmSecret(APIstub shim.ChaincodeStubInterface, args 
     if uname != request.From {
         return shim.Error("Wrong transaction ID")
     }
+
+    // test Locktime
+    argsByBytes := [][]byte{[]byte("externalTestLocktime"), []byte(request.File)}
+    res := APIstub.InvokeChaincode("myapp", argsByBytes, "")
+    if res.Status > 400 {
+        return shim.Error(res.Message)
+    } else if len(res.Payload) <= 0 {
+        return shim.Error("The file is not exist")
+    } else {
+        ret := string(res.Payload)
+        if ret != "2" {
+            return shim.Error("The file is locked for confirm")
+        }
+    }
+
     // add timestamp
     timestamp, err := APIstub.GetTxTimestamp()
     if err != nil {
         return shim.Error(err.Error())
     }
-    if request.ConfirmationTime == "" {
-        request.ConfirmationTime = timestamp.String()
+    if request.ConfirmationTime == 0 {
+        request.ConfirmationTime = timestamp.GetSeconds()
     } else {
         return shim.Error("This request has been confirmed")
     }
@@ -197,6 +235,32 @@ func (s *SmartContract) confirmSecret(APIstub shim.ChaincodeStubInterface, args 
     APIstub.PutState(args[0], requestAsBytes)
 
     return shim.Success(nil)
+}
+
+
+func (s *SmartContract) queryRequest(APIstub shim.ChaincodeStubInterface, args []string) sc.Response {
+
+    if len(args) > 1 {
+        return shim.Error("Incorrect number of arguments. Expacting only transaction id")
+    }
+
+    // buffer is a JSON array containing query results
+    var buffer bytes.Buffer
+
+    queryResponse, err := APIstub.GetState(args[0])
+    if err != nil {
+        return shim.Error(err.Error())
+    }
+    buffer.WriteString("{\"Key\":\"")
+    if err != nil {
+        return shim.Error(err.Error())
+    }
+    buffer.WriteString(args[0])
+    buffer.WriteString("\", \"Record\":")
+    buffer.WriteString(string(queryResponse))
+    buffer.WriteString("}")
+
+    return shim.Success(buffer.Bytes())
 }
 
 

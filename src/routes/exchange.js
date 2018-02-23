@@ -4,8 +4,8 @@ var network = require('./setup.js');
 var chaincode = require('./chaincode.js');
 
 /* GET & POST invoke createFile and queryFileByPartialKey function in chaincode  */
-router.route('/').get(function(req, res, next) {
-    // GET /exchange
+router.route('/').put(function(req, res, next) {
+    // PUT /exchange
     // invoke respondSecret
     // params: tx_id, secret
 
@@ -63,6 +63,20 @@ router.route('/').get(function(req, res, next) {
         txId: _txId
     };
     return chaincode.invoke(req, res, next, request);
+}).get(function(req, res, next) {
+    // GET /exchange
+    // invoke queryRequest
+    // params: tx_id
+
+    var _query = [];
+    _query.push(req.query.tx_id);
+
+    const request = {
+        chaincodeId: network.app_name[1],
+        fcn: 'queryRequest',
+        args: _query,
+    };
+    return chaincode.query(req, res, next, request);
 });
 
 module.exports = router;

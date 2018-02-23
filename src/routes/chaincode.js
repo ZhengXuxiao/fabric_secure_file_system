@@ -10,7 +10,7 @@ var Chaincode = {
             if (proposalResponses && proposalResponses[0].response && proposalResponses[0].response.status === 200) {
                 isProposalGood = true;
             } else {
-                return res.send({success:false, message:"Transaction proposal was bad"});
+                return res.send({success:false, message:proposalResponses[0].response.message});
             }
 
             // proposal is fine. now create a request
@@ -18,7 +18,7 @@ var Chaincode = {
                 proposalResponses: proposalResponses,
                 proposal: proposal
             };
-            // init an transaction listener and set a timeout of 30 sec
+           // init an transaction listener and set a timeout of 30 sec
             var transaction_id_string = request.txId.getTransactionID();
             var promises = [];
             // send tx here

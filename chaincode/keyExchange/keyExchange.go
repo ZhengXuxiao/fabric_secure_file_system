@@ -32,9 +32,9 @@ type RequestMessage struct {
 
 type ResponseMessage struct {
     From string `json:"from"`
-    To string `json:"To"`
+    To []string `json:"To"`
     File string `json:"file"`
-    TxID string `json:"tx_id"`
+    TxID []string `json:"tx_id"`
     Secret string `json:"secret"`
 }
 
@@ -47,7 +47,7 @@ type File struct {
 }
 
 /*
-* Init function: necessary
+ * Init function: necessary
  */
 func (s *SmartContract) Init(APIstub shim.ChaincodeStubInterface) sc.Response {
     return shim.Success(nil)
@@ -140,8 +140,8 @@ func (s *SmartContract) requestSecret(APIstub shim.ChaincodeStubInterface, args 
 
 func (s *SmartContract) respondSecret(APIstub shim.ChaincodeStubInterface, args []string) sc.Response {
 
-    if len(args) != 2 {
-        return shim.Error("Incorrect number of arguments. Expecting tx_id and secret")
+    if len(args) <= 1 {
+        return shim.Error("Incorrect number of arguments. Expecting at least one tx_id and one secret")
     }
 
     uname, err := s.testCertificate(APIstub, nil)
@@ -149,36 +149,50 @@ func (s *SmartContract) respondSecret(APIstub shim.ChaincodeStubInterface, args 
         return shim.Error(err.Error())
     }
 
-    // get the request record by tx_id
-    requestAsBytes, err := APIstub.GetState(args[0])
-    request := Request{}
-    json.Unmarshal(requestAsBytes, &request)
+    var fileKey = ""
+    var fromList []string
 
-    // check
-    if uname != request.To {
-        return shim.Error("Wrong transaction ID")
-    }
-    // add timestamp
-    timestamp, err := APIstub.GetTxTimestamp()
-    if err != nil {
-        return shim.Error(err.Error())
-    }
-    if request.ResponseTime == 0 {
-        request.ResponseTime = timestamp.GetSeconds()
-    } else {
-        return shim.Error("This request already has a response")
-    }
-    requestAsBytes, _ = json.Marshal(request)
-    APIstub.PutState(args[0], requestAsBytes)
+    for _, req := range args[:len(args)-1] {
+        // get the request record by tx_id
+        requestAsBytes, err := APIstub.GetState(req)
+        request := Request{}
+        json.Unmarshal(requestAsBytes, &request)
 
-    argsByBytes := [][]byte{[]byte("addLocktime"), []byte(request.File)}
+        if fileKey == "" {
+            fileKey = request.File
+        } else if fileKey != request.File {
+            return shim.Error("Wrong request tx_id: Inconsist file")
+        }
+
+        // check
+        if uname != request.To {
+            return shim.Error("Wrong transaction ID")
+        }
+
+        fromList = append(fromList, request.From)
+
+        // add timestamp
+        timestamp, err := APIstub.GetTxTimestamp()
+        if err != nil {
+            return shim.Error(err.Error())
+        }
+        if request.ResponseTime == 0 {
+            request.ResponseTime = timestamp.GetSeconds()
+        } else {
+            return shim.Error("This request already has a response")
+        }
+        requestAsBytes, _ = json.Marshal(request)
+        APIstub.PutState(args[0], requestAsBytes)
+    }
+
+    argsByBytes := [][]byte{[]byte("addLocktime"), []byte(fileKey)}
     res := APIstub.InvokeChaincode("myapp", argsByBytes, "")
     if res.Status > 400 {
         return shim.Error(res.Message)
     }
 
     // broadcast an event
-    var message = ResponseMessage{From: uname, To: request.From, File: request.File, TxID: args[0], Secret: args[1]}
+    var message = ResponseMessage{From: uname, To: fromList, File: fileKey, TxID: args[:len(args)-1], Secret: args[len(args)-1]}
     messageAsBytes, _ := json.Marshal(message)
     APIstub.SetEvent("respondSecret", messageAsBytes)
 

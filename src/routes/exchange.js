@@ -10,7 +10,10 @@ router.route('/').put(function(req, res, next) {
     // params: tx_id, secret
 
     var _query = [];
-    _query.push(req.query.tx_id);
+    var tx_ids = req.query.tx_id.split(',');
+    for (var i = 0; i < tx_ids.length; i++) {
+        _query.push(tx_ids[i]);
+    }
     _query.push(req.query.secret);
 
     var _txId = network.fabric_client.newTransactionID();

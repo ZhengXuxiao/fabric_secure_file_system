@@ -34,13 +34,14 @@ app.use(session({
     secret: 'secret',
     cookie: {
         maxAge: 10000*60*30
-    }
+    },
+    user: ""
 }));
 
-network.init();
-
 app.use(function(req, res, next) {
-    if (! network.user && req.originalUrl.slice(0,12) != '/users/login') {
+    if (! req.session.user && req.originalUrl.slice(0,12) != '/users/login') {
+    
+    console.log(req.session.user, network.client.user);
         return res.send({success:false, message:"please login in first"});
     } else {
         next();

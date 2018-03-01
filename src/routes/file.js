@@ -15,7 +15,7 @@ router.route('/').get(function(req, res, next) {
     if (req.query.owner.length > 0) _query.push(req.query.owner);
 
     const request = {
-        chaincodeId: network.app_name[0],
+        chaincodeId: network.clientList[req.session.user].app_name[0],
         fcn: 'queryFile',
         args: _query
     };
@@ -32,13 +32,13 @@ router.route('/').get(function(req, res, next) {
     _query.push(req.query.keyword);
     _query.push(req.query.summary);
 
-    var _txId = network.fabric_client.newTransactionID();
+    var _txId = network.clientList[req.session.user].fabric_client.newTransactionID();
 
     const request = {
-        chaincodeId: network.app_name[0],
+        chaincodeId: network.clientList[req.session.user].app_name[0],
         fcn: 'createFile',
         args: _query,
-        chainId: network.config.channel,
+        chainId: network.clientList[req.session.user].config.channel,
         txId: _txId
     };
     return chaincode.invoke(req, res, next, request);
@@ -53,13 +53,13 @@ router.route('/').get(function(req, res, next) {
     _query.push(req.query.name);
     _query.push(req.query.owner);
 
-    var _txId = network.fabric_client.newTransactionID();
+    var _txId = network.clientList[req.session.user].fabric_client.newTransactionID();
 
     const request = {
-        chaincodeId: network.app_name[0],
+        chaincodeId: network.clientList[req.session.user].app_name[0],
         fcn: 'deleteFile',
         args: _query,
-        chainId: network.config.channel,
+        chainId: network.clientList[req.session.user].config.channel,
         txId: _txId
     };
     return chaincode.invoke(req, res, next, request);

@@ -5,23 +5,19 @@ var network = require('./setup');
 /* POST LOGIN */
 router.post('/login', function(req, res, next) {
     var uname = req.query.username;
-    var client = network.fabric_client;
-    client.getUserContext(uname, true).then((user_from_store) => {
-        if (user_from_store && user_from_store.isEnrolled()) {
-            console.log(uname+" login");
-            network.user = user_from_store;
-            //res.sendStatus(200);
-            res.send({success: true, username: uname});
-        } else {
-            //res.sendStatus(404);
-            res.send({success: false, username: uname});
-        }
-    });
+    req.session.user = uname;
+    network.addClient(uname);
+    if (typeof network.clientList[req.session.user] === 'undefined') {
+        req.session.user = "";
+        res.send({success: false, message: "login failed. If it is your first time ti login in, please try again later."});
+    } else {
+        res.send({success: true, username: uname});
+    }
 });
 
 /* POST LOGOUT */
 router.post('/logout', function(req, res, next) {
-    network.user = null;
+    req.session.user = "";
     res.sendStatus(200);
 });
 

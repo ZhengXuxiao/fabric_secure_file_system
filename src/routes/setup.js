@@ -16,7 +16,7 @@ var Network = {
     event_hub: null,
 
     // init network
-    init: function() {
+    init: function(uname) {
         console.log("initiating the fabric network");
         // init basic network config
         this.fabric_client = new Fabric_Client();
@@ -37,8 +37,31 @@ var Network = {
             crypto_suite.setCryptoKeyStore(crypto_store);
             this.fabric_client.setCryptoSuite(crypto_suite);
             console.log("fabric network initialization done");
+            return this.fabric_client;
+        }).then(function(client) {
+            client.getUserContext(uname, true).then((user_from_store) => {
+                if (user_from_store && user_from_store.isEnrolled()) {
+                    console.log("login as", uname);
+                } else {
+                    console.log("login failed");
+                }
+            });
         });
+    }
+
+}
+
+var Networks = {
+    clientList: [],
+    addClient: function(uname) {
+        if (typeof this.clientList[uname] !== 'undefined') {
+            //pass
+        } else {
+            this.clientList[uname] = Network;
+            this.clientList[uname].init(uname);
+        }
     }
 }
 
-module.exports = Network;
+
+module.exports = Networks;

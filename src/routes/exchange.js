@@ -16,13 +16,13 @@ router.route('/').put(function(req, res, next) {
     }
     _query.push(req.query.secret);
 
-    var _txId = network.fabric_client.newTransactionID();
+    var _txId = network.clientList[req.session.user].fabric_client.newTransactionID();
 
     const request = {
-        chaincodeId: network.app_name[1],
+        chaincodeId: network.clientList[req.session.user].app_name[1],
         fcn: 'respondSecret',
         args: _query,
-        chainId: network.config.channal,
+        chainId: network.clientList[req.session.user].config.channal,
         txId: _txId
     };
     return chaincode.invoke(req, res, next, request);
@@ -37,13 +37,13 @@ router.route('/').put(function(req, res, next) {
     _query.push(req.query.name);
     _query.push(req.query.owner);
 
-    var _txId = network.fabric_client.newTransactionID();
+    var _txId = network.clientList[req.session.user].fabric_client.newTransactionID();
 
     const request = {
-        chaincodeId: network.app_name[1],
+        chaincodeId: network.clientList[req.session.user].app_name[1],
         fcn: 'requestSecret',
         args: _query,
-        chainId: network.config.channel,
+        chainId: network.clientList[req.session.user].config.channel,
         txId: _txId
     };
     return chaincode.invoke(req, res, next, request);
@@ -56,13 +56,13 @@ router.route('/').put(function(req, res, next) {
     var _query = [];
     _query.push(req.query.tx_id);
 
-    var _txId = network.fabric_client.newTransactionID();
+    var _txId = network.clientList[req.session.user].fabric_client.newTransactionID();
 
     const request = {
-        chaincodeId: network.app_name[1],
+        chaincodeId: network.clientList[req.session.user].app_name[1],
         fcn: 'confirmSecret',
         args: _query,
-        chainId: network.config.channel,
+        chainId: network.clientList[req.session.user].config.channel,
         txId: _txId
     };
     return chaincode.invoke(req, res, next, request);
@@ -75,7 +75,7 @@ router.route('/').put(function(req, res, next) {
     _query.push(req.query.tx_id);
 
     const request = {
-        chaincodeId: network.app_name[1],
+        chaincodeId: network.clientList[req.session.user].app_name[1],
         fcn: 'queryRequest',
         args: _query,
     };

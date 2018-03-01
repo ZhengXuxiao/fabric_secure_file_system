@@ -3,7 +3,7 @@ var express = require('express');
 
 var Chaincode = {
     invoke: function(req, res, next, request) {
-        network.channel.sendTransactionProposal(request).then((results) => {
+        network.clientList[req.session.user].channel.sendTransactionProposal(request).then((results) => {
             var proposalResponses = results[0];
             var proposal = results[1];
             let isProposalGood = false;
@@ -22,10 +22,10 @@ var Chaincode = {
             var transaction_id_string = request.txId.getTransactionID();
             var promises = [];
             // send tx here
-            var sendPromise = network.channel.sendTransaction(tx_request);
+            var sendPromise = network.clientList[req.session.user].channel.sendTransaction(tx_request);
             promises.push(sendPromise);
             // get an event hub
-            let event_hub = network.event_hub;
+            let event_hub = network.clientList[req.session.user].event_hub;
             let txPromise = new Promise((resolve, reject) => {
                 let handle = setTimeout(() => {
                     event_hub.disconnect();
@@ -73,7 +73,7 @@ var Chaincode = {
     },
 
     query: function(req, res, next, request) {
-        network.channel.queryByChaincode(request).then((query_responses) => {
+        network.clientList[req.session.user].channel.queryByChaincode(request).then((query_responses) => {
             if (query_responses && query_responses.length == 1) {
                 if (query_responses[0] instanceof Error) {
                     return res.send({success:false, message:query_responses[0]});

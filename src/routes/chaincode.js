@@ -65,6 +65,7 @@ var Chaincode = {
                 return res.send({success:false, message:"Fail to commit transaction to the ledger"});
             }
 
+            req.session.success = "Transaction successfully commited: "+results[1].tx_id;
             return res.send({success:true, tx_id:results[1].tx_id});
         }).catch((err) => {
             console.log(4);

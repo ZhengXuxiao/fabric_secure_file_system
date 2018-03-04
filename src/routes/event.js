@@ -23,7 +23,18 @@ Fabric_Client.newDefaultKeyValueStore({ path: store_path }).then((state_store) =
     var promise = new Promise( (resolve, reject) => {
         event_hub.registerChaincodeEvent(app_name[1], 'requestSecret', function(ev) {
             console.log("catch requestSecret event", ev.payload.toString());
-            // do something
+            var message = JSON.parse(ev.payload.toString());
+            var request = global.dbHandler.getModel('request');
+            message.responseTime = 0;
+            message.confirmationTime = 0;
+            message.secret = "";
+            request.create(message, function (err, doc) {
+                if (err) {
+                    console.log("requestSecret", err);
+                } else {
+                  console.log("requestSecret", message.tx_id);
+                }
+            });
         },
         function() {
             console.log("event listener stopped");
@@ -32,10 +43,77 @@ Fabric_Client.newDefaultKeyValueStore({ path: store_path }).then((state_store) =
         event_hub.registerChaincodeEvent(app_name[1], 'respondSecret', function(ev) {
             console.log("catch respondSecret event", ev.payload.toString());
             // do something
+            var message = JSON.parse(ev.payload.toString());
+            var request = global.dbHandler.getModel('request');
+            request.update({tx_id:{"$in":message.tx_id} }, 
+                {responseTime:message.responseTime, secret:message.secret}, 
+            function (err, doc) {
+                if (err) {
+                    console.log("respondSecret", err);
+                } else {
+                  console.log("respondSecret", message.tx_id);
+                }
+            });
         },
         function() {
             console.log("event listener stopped");
-        });
+        }); 
+
+        event_hub.registerChaincodeEvent(app_name[1], 'confirmSecret', function(ev) {
+            console.log("catch confirmSecret event", ev.payload.toString());
+            // do something
+            var message = JSON.parse(ev.payload.toString());
+            var request = global.dbHandler.getModel('request');
+            request.update({tx_id:message.tx_id}, 
+                {confirmationTime: message.confirmationTime}, 
+            function (err, doc) {
+                if (err) {
+                    console.log("respondSecret", err);
+                } else {
+                  console.log("respondSecret", message.tx_id);
+                }
+            });
+        },
+        function() {
+            console.log("event listener stopped");
+        }); 
+
+        event_hub.registerChaincodeEvent(app_name[0], 'createFile', function(ev) {
+            console.log("catch createFile event", ev.payload.toString());
+            // do something
+            var message = JSON.parse(ev.payload.toString());
+            delete message["locktime"];
+            var file = global.dbHandler.getModel('file');
+            file.create(message, function (err, doc) {
+              if (err) {
+                console.log("createFile", err);
+              } else {
+                console.log("createFile", message.name);
+              }
+            });
+        },
+        function() {
+            console.log("event listener stopped");
+        }); 
+
+        event_hub.registerChaincodeEvent(app_name[0], 'deleteFile', function(ev) {
+            console.log("catch deleteFile event", ev.payload.toString());
+            // do something
+            var attr = ev.payload.toString().split('\u0000');
+            var file = global.dbHandler.getModel('file');
+            var condition = {keyword:attr[0], name:attr[1], owner:attr[2]};
+            file.remove(condition, function (err, doc) {
+                if (err) {
+                     console.log("deleteFile", err);
+                } else {
+                     console.log("deleteFile", attr[1]);
+                }
+            });
+        },
+        function() {
+            console.log("event listener stopped");
+        }); 
+
     });
 });
 

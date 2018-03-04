@@ -84,6 +84,7 @@ func (s *SmartContract) createFile(APIstub shim.ChaincodeStubInterface, args []s
     }
     APIstub.PutState(ckey, fileAsBytes)
 
+    APIstub.SetEvent("createFile", fileAsBytes);
     return shim.Success([]byte(uname))
 }
 
@@ -216,6 +217,7 @@ func (s *SmartContract) deleteFile(APIstub shim.ChaincodeStubInterface, args []s
         return shim.Error(err.Error())
     }
 
+    APIstub.SetEvent("deleteFile", []byte(ckey));
     return shim.Success([]byte(uname))
 }
 

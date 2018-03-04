@@ -10,11 +10,14 @@ router.route('/').put(function(req, res, next) {
     // params: tx_id, secret
 
     var _query = [];
-    var tx_ids = req.query.tx_id.split(',');
+    if (! req.body) var data = req.query;
+    else var data = req.body
+
+    var tx_ids = data.tx_id.split(',');
     for (var i = 0; i < tx_ids.length; i++) {
         _query.push(tx_ids[i]);
     }
-    _query.push(req.query.secret);
+    _query.push(data.secret);
 
     var _txId = network.clientList[req.session.user].fabric_client.newTransactionID();
 
@@ -33,9 +36,11 @@ router.route('/').put(function(req, res, next) {
     // params: keyword, name, owner
 
     var _query = [];
-    _query.push(req.query.keyword);
-    _query.push(req.query.name);
-    _query.push(req.query.owner);
+    if (! req.body) var data = req.query;
+    else var data = req.body
+    _query.push(data.keyword);
+    _query.push(data.name);
+    _query.push(data.owner);
 
     var _txId = network.clientList[req.session.user].fabric_client.newTransactionID();
 
@@ -54,7 +59,10 @@ router.route('/').put(function(req, res, next) {
     // params: tx_id
 
     var _query = [];
-    _query.push(req.query.tx_id);
+    if (! req.body) var data = req.query;
+    else var data = req.body
+
+    _query.push(data.tx_id);
 
     var _txId = network.clientList[req.session.user].fabric_client.newTransactionID();
 

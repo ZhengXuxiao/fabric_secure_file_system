@@ -2,6 +2,8 @@ var express = require('express');
 var router = express.Router();
 var network = require('./setup.js');
 var chaincode = require('./chaincode.js');
+var multer = require('multer');
+var upload = multer({dest: 'upload/'});
 
 /* GET & POST invoke createFile and queryFileByPartialKey function in chaincode  */
 router.route('/').get(function(req, res, next) {
@@ -10,9 +12,11 @@ router.route('/').get(function(req, res, next) {
     // params: keyword, name, owner
 
     var _query = [];
-    if (req.query.keyword.length > 0) _query.push(req.query.keyword);
-    if (req.query.name.length > 0) _query.push(req.query.name);
-    if (req.query.owner.length > 0) _query.push(req.query.owner);
+    if (! req.body.name) var data = req.query;
+    else var data = req.body;
+    if (data.keyword.length > 0) _query.push(data.keyword);
+    if (data.name.length > 0) _query.push(data.name);
+    if (data.owner.length > 0) _query.push(data.owner);
 
     const request = {
         chaincodeId: network.clientList[req.session.user].app_name[0],
@@ -21,16 +25,18 @@ router.route('/').get(function(req, res, next) {
     };
     return chaincode.query(req, res, next, request);
 
-}).post(function(req, res, next) {
+}).post(upload.single('file'), function(req, res, next) {
     // POST /file
     // invoke createFile
     // params: name, hash, keyword, summary
+    if (! req.body.name) var data = req.query;
+    else var data = req.body;
 
     var _query = [];
-    _query.push(req.query.name);
-    _query.push(req.query.hash);
-    _query.push(req.query.keyword);
-    _query.push(req.query.summary);
+    _query.push(data.name);
+    _query.push("hash");
+    _query.push(data.keyword);
+    _query.push(data.summary);
 
     var _txId = network.clientList[req.session.user].fabric_client.newTransactionID();
 
@@ -48,10 +54,13 @@ router.route('/').get(function(req, res, next) {
     // invoke deleteFile
     // params: keyword, name, owner
 
+    if (! req.body.name) var data = req.query;
+    else var data = req.body;
+ 
     var _query = [];
-    _query.push(req.query.keyword);
-    _query.push(req.query.name);
-    _query.push(req.query.owner);
+    _query.push(data.keyword);
+    _query.push(data.name);
+    _query.push(data.owner);
 
     var _txId = network.clientList[req.session.user].fabric_client.newTransactionID();
 

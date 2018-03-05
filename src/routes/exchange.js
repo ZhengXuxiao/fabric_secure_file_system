@@ -20,7 +20,6 @@ router.route('/').put(function(req, res, next) {
     _query.push(data.secret);
 
     var _txId = network.clientList[req.session.user].fabric_client.newTransactionID();
-
     const request = {
         chaincodeId: network.clientList[req.session.user].app_name[1],
         fcn: 'respondSecret',
@@ -63,7 +62,7 @@ router.route('/').put(function(req, res, next) {
     else var data = req.body
 
     _query.push(data.tx_id);
-
+console.log(_query);
     var _txId = network.clientList[req.session.user].fabric_client.newTransactionID();
 
     const request = {

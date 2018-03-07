@@ -1,5 +1,6 @@
 $(function() {
 
+  $('.nav-tabs li:eq(1)').addClass('active');
   loadPage({});
 
   $('#search').click(function() {
@@ -41,9 +42,15 @@ $(function() {
               type: 'post',
               data: data,
               succuss: function(data, status) {
-                $(this).attr('disabled', 'true');
+                if (data.success) {
+                  alert('Operation succeed, transaction id: '+data.tx_id);
+                } else {
+                  alert(data.message);
+                }
+                (this).attr('disabled', 'true');
               },
               error: function(data, status) {
+                alert('something wrong');
                 console.log('error', data);
               }
             })
@@ -57,3 +64,5 @@ $(function() {
   }
 
 });
+
+

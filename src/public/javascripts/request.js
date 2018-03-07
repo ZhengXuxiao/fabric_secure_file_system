@@ -1,6 +1,7 @@
 $(function() {
   loadPage();
 
+  $('.nav-tabs li:eq(3)').addClass('active');
   function loadPage() {
     var query = {from: uname};
     $.ajax({
@@ -17,36 +18,63 @@ $(function() {
           template.find('.from').text(data[i].from);
           template.find('.to').text(data[i].to);
           template.find('.file').text(data[i].file);
-          template.find('.response').text(Date(parseInt(data[i].responseTime)));
-          request.append(template.html());
-          template.find('.download').attr('disabled', 'false');
-          template.find('.confirm').attr('disabled', 'false');
+          template.find('.name').text(data[i].name);
+          template.find('.keyword').text(data[i].keyword);
+          template.find('.owner').text(data[i].owner);
+
+          if (data[i].responseTime == 0) {
+            template.find('.response').text('No Response');
+          } else {
+            template.find('.response').text(Date(parseInt(data[i].responseTime)));
+          }
+          if (data[i].responseTime == 0) {
+            template.find('.confirmation').text('No Confirmation');
+          } else {
+            template.find('.confirmation').text(Date(parseInt(data[i].confirmationTime)));
+          }
+
+          template.find('.download').removeAttr('disabled');
+          template.find('.confirm').removeAttr('disabled');
           if (data[i].responseTime == 0) {
             template.find('.download').attr('disabled', 'true');
             template.find('.confirm').attr('disabled', 'true');
           } else if (data[i].confirmationTime != 0) {
-            template.find('.download').attr('disabled', 'true');
+            template.find('.confirm').attr('disabled', 'true');
           }
+          request.append(template.html());
         }
         $('.confirm').each(function(index, element) {
           $(this).click(function() {
             var data = {};
             data.tx_id = $(this).siblings('.tx_id').text();
-            console.log(data);
             $.ajax({
               url: '/exchange',
               type: 'delete',
               data: data,
-              succuss: function(data, status) {
-                console.log('confirm', data.tx_id);
+              succuss: function(data) {
+                if (data.success) {
+                  alert('Operation succeed, transaction id: '+data.tx_id);
+                } else {
+                  alert(data.message);
+                }
                 $(this).attr('disabled', 'true');
               },
-              error: function(data, status) {
+              error: function(data) {
                 console.log('error', data);
+                alert('something wrong');
               }
             });
           });
         });
+
+        $('.download').each(function(index, element) {
+          $(this).click(function() {
+            var filename = $(this).siblings('.name').text();
+            window.location.href = "/files/"+filename;
+          });
+        });
+
+
       },
       error: function(data, status) {
         console.log("error", data);

@@ -28,6 +28,10 @@ Fabric_Client.newDefaultKeyValueStore({ path: store_path }).then((state_store) =
             message.responseTime = 0;
             message.confirmationTime = 0;
             message.secret = "";
+            var myfile = message.file.split('\u0000');
+            message.name = myfile[3];
+            message.keyword = myfile[2];
+            message.owner = myfile[3];
             request.create(message, function (err, doc) {
                 if (err) {
                     console.log("requestSecret", err);
@@ -101,7 +105,7 @@ Fabric_Client.newDefaultKeyValueStore({ path: store_path }).then((state_store) =
             // do something
             var attr = ev.payload.toString().split('\u0000');
             var file = global.dbHandler.getModel('file');
-            var condition = {keyword:attr[0], name:attr[1], owner:attr[2]};
+            var condition = {keyword:attr[2], name:attr[3], owner:attr[4]};
             file.remove(condition, function (err, doc) {
                 if (err) {
                      console.log("deleteFile", err);

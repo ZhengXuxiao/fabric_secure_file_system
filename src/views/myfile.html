@@ -3,7 +3,7 @@
     <h3 class="panel-title">Upload</h3>
   </div>
   <div class="panel-body">
-    <form action="/file" method="post" class="form-horizontal" role="form" enctype="multipart/form-data">
+    <form class="form-horizontal" id="upload-form" enctype="multipart/form-data" method="post" action="javascript:">
       <div class="form-group">
         <label for="name" class="col-sm-2 control-label">Name</label>
         <div class="col-sm-10">
@@ -13,7 +13,7 @@
       <div class="form-group">
         <label for="keyword" class="col-sm-2 control-label">Keyword</label>
         <div class="col-sm-10">
-          <input type="text" class="form-control" name="keyqord" id="keyword" placeholder="file's keywords">
+          <input type="text" class="form-control" name="keyword" id="keyword" placeholder="file's keywords">
         </div>
       </div>
       <div class="form-group">
@@ -30,7 +30,7 @@
       </div>
       <div class="form-group">
         <div class="col-sm-offset-10 col-sm-10">
-          <button type="submit" id="upload" class="btn btn-primary">Submit</button>
+          <button id="upload" class="btn btn-primary">Submit</button>
         </div>
       </div>
     </form>
@@ -47,8 +47,8 @@
       <strong>Keyword</strong>: <span class="keyword">XXX</span><br />
       <strong>Owner</strong>: <span class="owner">XXX</span><br />
       <strong>Summary</strong>: <span class="summary">XXX</span><br />
-      <button class="btn btn-primary" type="button">Delete</button>
-      <button class="btn btn-primary" type="button">Download</button>
+      <button class="btn btn-primary delete" type="button">Delete</button>
+      <button class="btn btn-primary download" type="button">Download</button>
     </div>
   </div>
 </div>
